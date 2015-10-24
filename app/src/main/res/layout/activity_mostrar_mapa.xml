@@ -1,0 +1,42 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="br.com.prova.marcaconsultas.ActivityMostrarMapa">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/tbFiltro"
+        android:elevation="4dp"
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:minHeight="?attr/actionBarSize"
+        android:background="@drawable/toolbar_arredondado"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_marginLeft="@dimen/activity_vertical_margin"
+        android:layout_marginRight="@dimen/activity_vertical_margin">
+
+        <ImageButton
+            android:id="@+id/btnVoltar"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:src="@drawable/ic_voltar"
+            android:background="@android:color/white" />
+
+        <TextView
+            android:id="@+id/tvEndereco"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_marginLeft="30dp"
+            android:layout_marginRight="@dimen/activity_vertical_margin"
+            android:text="Rua General Silva Junior 858 Fortaleza"
+            android:textSize="20dp"
+            android:textColor="@android:color/black" />
+
+    </android.support.v7.widget.Toolbar>
+
+
+    <include layout="@layout/fragment_mapa"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"></include>
+
+</RelativeLayout>

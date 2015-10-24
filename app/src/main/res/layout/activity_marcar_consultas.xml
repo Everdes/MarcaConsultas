@@ -1,0 +1,225 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:fab="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="br.com.prova.marcaconsultas.ActivityMarcarConsultas">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/tbFiltro"
+        android:elevation="4dp"
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:minHeight="?attr/actionBarSize"
+        android:background="?attr/colorPrimary">
+
+        <ImageButton
+            android:id="@+id/btnVoltar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_voltar_branco"
+            android:background="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:textColor="@android:color/white"
+            android:text="@string/marcar_consulta"
+            android:textSize="20dp"
+            android:layout_gravity="center_horizontal"
+            android:textStyle="bold"/>
+
+    </android.support.v7.widget.Toolbar>
+
+    <RelativeLayout
+        android:id="@+id/llFiltro"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tbFiltro"
+        android:background="#b6b6b6">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/filtrar_por"
+            android:layout_marginLeft="10dp"
+            android:id="@+id/txtFiltrarPor"
+            android:textSize="@dimen/texto_grande"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="12dp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivLocal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_local"
+            android:layout_below="@id/txtFiltrarPor"
+            android:layout_alignParentLeft="true"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="10dp" />
+
+        <TextView
+            android:id="@+id/txtLocal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:layout_marginLeft="10dp"
+            android:text="@string/local"
+            android:textSize="@dimen/texto_pequeno"
+            android:textColor="@android:color/white"
+            android:layout_toRightOf="@id/ivLocal"
+            android:layout_marginTop="14dp"
+            android:layout_below="@id/txtFiltrarPor" />
+
+        <ImageView
+            android:id="@+id/ivMedico"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_medico"
+            android:layout_below="@id/ivLocal"
+            android:layout_alignParentLeft="true"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="10dp" />
+
+        <TextView
+            android:id="@+id/txtMedico"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:layout_marginLeft="10dp"
+            android:text="@string/medico"
+            android:textSize="@dimen/texto_pequeno"
+            android:textColor="@android:color/white"
+            android:layout_toRightOf="@id/ivMedico"
+            android:layout_marginTop="14dp"
+            android:layout_below="@id/txtLocal" />
+
+        <ImageView
+            android:id="@+id/ivEspecialidade"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_ferramenta"
+            android:layout_below="@id/txtMedico"
+            android:layout_alignParentLeft="true"
+            android:layout_marginTop="18dp"
+            android:layout_marginLeft="10dp" />
+
+        <TextView
+            android:id="@+id/txtEspecialidade"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:layout_marginLeft="10dp"
+            android:text="@string/especialidade"
+            android:textSize="@dimen/texto_pequeno"
+            android:textColor="@android:color/white"
+            android:layout_toRightOf="@id/ivEspecialidade"
+            android:layout_marginTop="14dp"
+            android:layout_below="@id/txtMedico" />
+
+
+        <ImageView
+            android:id="@+id/ivData"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_calendario"
+            android:layout_below="@id/ivEspecialidade"
+            android:layout_alignParentLeft="true"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="10dp" />
+
+        <TextView
+            android:id="@+id/txtData"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:layout_marginLeft="10dp"
+            android:text="@string/data"
+            android:textSize="@dimen/texto_pequeno"
+            android:textColor="@android:color/white"
+            android:layout_toRightOf="@id/ivData"
+            android:layout_marginTop="12dp"
+            android:layout_below="@id/txtEspecialidade" />
+
+
+        <RadioGroup
+            android:id="@+id/radGrpFiltro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/txtFiltrarPor"
+            android:layout_alignParentRight="true"
+            android:gravity="center|end"
+            android:paddingRight="@dimen/activity_vertical_margin">
+
+            <RadioButton
+                android:id="@+id/radBtnLocal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true" />
+
+            <RadioButton
+                android:id="@+id/radBtnMedico"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true" />
+
+            <RadioButton
+                android:id="@+id/radBtnEspecialidade"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true" />
+
+            <RadioButton
+                android:id="@+id/radBtnData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true" />
+
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/txtSelecione"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/selecione"
+            android:layout_marginLeft="10dp"
+            android:textSize="@dimen/texto_pequeno"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="12dp"
+            android:textStyle="bold"
+            android:layout_below="@id/radGrpFiltro"
+            android:visibility="gone"/>
+
+        <Spinner
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/white"
+            android:id="@+id/spnFiltro"
+            android:layout_below="@+id/txtSelecione" />
+
+    </RelativeLayout>
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/lvAgendaMedico"
+        android:layout_below="@id/llFiltro" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fabMarcarConsulta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_novo"
+        fab:elevation="4dp"
+        fab:fabSize="normal"
+        fab:fab_colorNormal="@color/accent"
+        fab:fab_colorPressed="@color/primary"
+        fab:fab_colorRipple="@color/primary_dark" />
+
+</RelativeLayout>
