@@ -1,5 +1,6 @@
 package br.com.prova.model.bean;
 
+import java.io.Serializable;
 import java.util.Date;
 
 import br.com.prova.Enumerators.Situacao;
@@ -7,14 +8,15 @@ import br.com.prova.Enumerators.Situacao;
 /**
  * Created by Jorge on 27/09/2015.
  */
-public class ConsultaMarcada {
+public class ConsultaMarcada implements Serializable {
 
     private int id;
     private int idAgendaMedico;
-    private Usuario usuario;
+    private AgendaMedico agendaMedico;
     private Date dataMarcacaoConsulta;
     private Situacao situacao;
     private Date dataCancelamento;
+    private Usuario usuario;
 
     public int getId() {
         return id;
@@ -30,6 +32,14 @@ public class ConsultaMarcada {
 
     public void setIdAgendaMedico(int idAgendaMedico) {
         this.idAgendaMedico = idAgendaMedico;
+    }
+
+    public AgendaMedico getAgendaMedico() {
+        return agendaMedico;
+    }
+
+    public void setAgendaMedico(AgendaMedico agendaMedico) {
+        this.agendaMedico = agendaMedico;
     }
 
     public Usuario getUsuario() {

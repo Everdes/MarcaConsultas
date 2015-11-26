@@ -1,5 +1,6 @@
 package br.com.prova.marcaconsultas;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -10,9 +11,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -22,6 +29,8 @@ import br.com.prova.model.bean.ConsultaMarcada;
 import br.com.prova.model.bean.Usuario;
 import br.com.prova.model.dao.AgendaMedicoDAO;
 import br.com.prova.model.dao.ConsultaMarcadaDAO;
+import br.com.prova.task.TaskConsulta;
+import br.com.prova.task.TaskEspecialidade;
 import br.com.prova.util.Util;
 
 /**
@@ -39,6 +48,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
     private ConsultaMarcadaDAO mConsultaMarcadaDAO;
     private FloatingActionButton mFabNovo;
     private AgendaMedico mAgendaMedicoSelecionado;
+    private ProgressDialog mProgresso;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,16 +115,44 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
      * Caso o usuário logado seja Adm as Consultas de todos os usuários são retornadas,
      * caso seja User, somente as suas consultas são retornadas.
      */
-    private List<ConsultaMarcada> listarConsultasMarcadas() {
-        //TODO temporario
-        List<ConsultaMarcada> consultasMarcadas;
-
+    private void listarConsultasMarcadas() {
         if (mUsuarioLogado.getPerfil().equals("A"))
-            consultasMarcadas = mConsultaMarcadaDAO.listarMarcadas();
+            consultarWS("http://192.168.0.6:8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcada"); //mConsultaMarcadaDAO.listarMarcadas();
         else
-            consultasMarcadas = mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+            mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+    }
 
-        return consultasMarcadas;
+    private void consultarWS(String url) {
+        new TaskConsulta(url){
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+
+                mProgresso = ProgressDialog.show(ActivityListaConsultasMarcadas.this, "Aguarde...", "Consultando o servidor...", true, false);
+            }
+
+            @Override
+            protected void onPostExecute(String retorno) {
+                super.onPostExecute(retorno);
+
+                if (retorno.toString().isEmpty())
+                    Toast.makeText(ActivityListaConsultasMarcadas.this, retorno, Toast.LENGTH_LONG).show();
+                else{
+                    Type type = new TypeToken<List<ConsultaMarcada>>(){}.getType();
+                    Gson gson = new Gson();
+                    mConsultasMarcadas = gson.fromJson(retorno, type);
+                    Toast.makeText(ActivityListaConsultasMarcadas.this, " Retornou o valor: "
+                            + String.valueOf(mConsultasMarcadas.get(0).getId()), Toast.LENGTH_LONG).show();
+
+                    // TODO deve ser implementado para alimentar o ListView
+//                    if (mConsultasMarcadas != null) {
+//                        mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(ActivityListaConsultasMarcadas.this, mConsultasMarcadas));
+//                    }
+                }
+
+                mProgresso.dismiss();
+            }
+        }.execute();
     }
 
     @Override
@@ -199,13 +237,16 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
      * Método que atualiza o List View de Consultas Marcadas
      */
     public void atualizarLista() {
-        mConsultasMarcadas = listarConsultasMarcadas();
+//        mConsultasMarcadas =
+        listarConsultasMarcadas();
+
+
 
         /**
          * Seta um adaptador personalizado que "transforma" os dados da lista, em componentes de tela do List View
          */
-        if (mConsultasMarcadas != null) {
-            mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(this, mConsultasMarcadas));
-        }
+//        if (mConsultasMarcadas != null) {
+//            mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(this, mConsultasMarcadas));
+//        }
     }
 }
