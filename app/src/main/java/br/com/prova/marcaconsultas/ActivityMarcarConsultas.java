@@ -1,5 +1,7 @@
 package br.com.prova.marcaconsultas;
 
+import android.app.Activity;
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
@@ -12,7 +14,12 @@ import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -22,7 +29,7 @@ import java.util.List;
 
 import br.com.prova.Enumerators.Situacao;
 import br.com.prova.adapters.AdapterListaAgendaMedico;
-import br.com.prova.model.bean.AgendaMedico;
+import br.com.prova.model.bean.AgendaMedica;
 import br.com.prova.model.bean.ConsultaMarcada;
 import br.com.prova.model.bean.Especialidade;
 import br.com.prova.model.bean.LocalAtendimento;
@@ -33,6 +40,7 @@ import br.com.prova.model.dao.ConsultaMarcadaDAO;
 import br.com.prova.model.dao.EspecialidadeDAO;
 import br.com.prova.model.dao.LocalAtendimentoDAO;
 import br.com.prova.model.dao.MedicoDAO;
+import br.com.prova.task.TaskConsulta;
 import br.com.prova.util.Util;
 
 /**
@@ -42,7 +50,7 @@ import br.com.prova.util.Util;
  */
 public class ActivityMarcarConsultas extends AppCompatActivity {
 
-    private List<AgendaMedico> mListaAgendaMedico;
+    private List<AgendaMedica> mListaAgendaMedica;
     private ListView mLvAgendaMedico;
     private AgendaMedicoDAO mAgendaMedicoDAO;
     private FloatingActionButton mFabMarcarConsulta;
@@ -57,6 +65,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
     private List<Medico> mMedicosFiltro;
     private List<Especialidade> mEspecialidades;
     private RadioGroup mRadGrpFiltro;
+    private ProgressDialog mProgresso;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,13 +117,13 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
                         alimentarSpinner(listaSpinner);
                         break;
-                    case R.id.radBtnData:
-                        for (AgendaMedico agendaMedico : mListaAgendaMedico)
-                            listaSpinner.add(Util.convertDateToStr(agendaMedico.getData()));
-
-                        alimentarSpinner(listaSpinner);
-
-                        break;
+//                    case R.id.radBtnData:
+//                        for (AgendaMedica agendaMedica : mListaAgendaMedica)
+//                            listaSpinner.add(Util.convertDateToStr(agendaMedica.getData()));
+//
+//                        alimentarSpinner(listaSpinner);
+//
+//                        break;
                 }
             }
         });
@@ -129,17 +138,17 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 switch (mRadGrpFiltro.getCheckedRadioButtonId()) {
                     case R.id.radBtnLocal:
-                        mListaAgendaMedico = mAgendaMedicoDAO.listarPorLocalAtendimento(mLocalAtendimentosFiltro.get(position));
+                        mListaAgendaMedica = mAgendaMedicoDAO.listarPorLocalAtendimento(mLocalAtendimentosFiltro.get(position));
                         break;
                     case R.id.radBtnMedico:
-                        mListaAgendaMedico = mAgendaMedicoDAO.listarPorMedico(mMedicosFiltro.get(position));
+                        mListaAgendaMedica = mAgendaMedicoDAO.listarPorMedico(mMedicosFiltro.get(position));
                         break;
                     case R.id.radBtnEspecialidade:
                         mMedicosFiltro = mMedicoDAO.listarPorEspecialidade(mEspecialidades.get(position));
 
-                        mListaAgendaMedico.clear();
+                        mListaAgendaMedica.clear();
                         for(Medico medico : mMedicosFiltro) {
-                            mListaAgendaMedico.addAll(mAgendaMedicoDAO.listarPorMedico(medico));
+                            mListaAgendaMedica.addAll(mAgendaMedicoDAO.listarPorMedico(medico));
                         }
                         break;
                     case R.id.radBtnData:
@@ -150,7 +159,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
                             e.printStackTrace();
                         }
 
-                        mListaAgendaMedico = mAgendaMedicoDAO.listarPorData(date);
+                        mListaAgendaMedica = mAgendaMedicoDAO.listarPorData(date);
                         break;
                 }
 
@@ -167,15 +176,15 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
         mFabMarcarConsulta.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                List<AgendaMedico> agendaMedicoSelecionadas = getAgendaMedicoSelecionadas();
+                List<AgendaMedica> agendaMedicaSelecionadas = getAgendaMedicoSelecionadas();
 
-                if (agendaMedicoSelecionadas.size() == 1) {
+                if (agendaMedicaSelecionadas.size() == 1) {
 
-                    if (criticarCarencia(agendaMedicoSelecionadas.get(0))) {
+                    if (criticarCarencia(agendaMedicaSelecionadas.get(0))) {
                         Util.showMessage("Aviso",
                                 "Não é possível marcar um consulta para a mesma especialidade, em menos de 30 dias", ActivityMarcarConsultas.this);
 
-                    } else if (mConsultaMarcadaDAO.inserir(getConsultaMarcada(agendaMedicoSelecionadas.get(0)))) {
+                    } else if (mConsultaMarcadaDAO.inserir(getConsultaMarcada(agendaMedicaSelecionadas.get(0)))) {
                         listarAgendaMedico();
                         atualizarLista();
                         Util.enviarEmail(ActivityMarcarConsultas.this, new String[]{mUsuarioLogado.getEmail()}, "A sua consulta foi marcada com sucesso.");
@@ -214,13 +223,13 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
     /**
      * Método que recebe uma Agenda Medico e retorna um BEAN de Consulta Marcada.
-     * @param agendaMedico
+     * @param agendaMedica
      * @return
      */
-    private ConsultaMarcada getConsultaMarcada(AgendaMedico agendaMedico) {
+    private ConsultaMarcada getConsultaMarcada(AgendaMedica agendaMedica) {
         ConsultaMarcada consultaMarcada = new ConsultaMarcada();
 
-        consultaMarcada.setIdAgendaMedico(agendaMedico.getId());
+//        consultaMarcada.setIdAgendaMedico(agendaMedica.getId());
         consultaMarcada.setUsuario(mUsuarioLogado);
         consultaMarcada.setDataMarcacaoConsulta(Calendar.getInstance().getTime());
         consultaMarcada.setSituacao(Situacao.MARCADA);
@@ -232,11 +241,11 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
      * Método que atualiza o List View da AgendaMedico.
      */
     private void atualizarLista() {
-        if (mListaAgendaMedico != null) {
+        if (mListaAgendaMedica != null) {
             /**
              * Seta um adaptador personalizado que "transforma" os dados da lista, em componentes de tela do List View.
              */
-            mLvAgendaMedico.setAdapter(new AdapterListaAgendaMedico(this, mListaAgendaMedico));
+            mLvAgendaMedico.setAdapter(new AdapterListaAgendaMedico(this, mListaAgendaMedica));
         }
     }
 
@@ -244,7 +253,38 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
      * Método que retorna uma lista de AgendaMedico disponíveis.
      */
     private void listarAgendaMedico() {
-        mListaAgendaMedico = mAgendaMedicoDAO.listarPorSituacao(Situacao.DISPONIVEL);
+//        mListaAgendaMedica = mAgendaMedicoDAO.listarPorSituacao(Situacao.DISPONIVEL);
+
+        consultarWS("http://192.168.0.6:8090/WSAgendaMedica/agendaMedica/listarAgendaMedica");
+    }
+
+    private void consultarWS(String url) {
+        new TaskConsulta(url) {
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+
+                mProgresso = ProgressDialog.show(ActivityMarcarConsultas.this, "Aguarde...", "Consultando o servidor...", true, false);
+            }
+
+            @Override
+            protected void onPostExecute(String retorno) {
+                super.onPostExecute(retorno);
+
+                if (retorno.toString().isEmpty())
+                    Toast.makeText(ActivityMarcarConsultas.this, retorno, Toast.LENGTH_LONG).show();
+                else {
+                    Type type = new TypeToken<List<AgendaMedica>>() {
+                    }.getType();
+                    Gson gson = new Gson();
+                    mListaAgendaMedica = gson.fromJson(retorno, type);
+
+                    atualizarLista();
+                }
+
+                mProgresso.dismiss();
+            }
+        }.execute();
     }
 
     /**
@@ -253,8 +293,8 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
      *
      * Método que retorna os itens selecionados no ListView.
      */
-    private List<AgendaMedico> getAgendaMedicoSelecionadas() {
-        List<AgendaMedico> agendaMedicoSelecionadas = new ArrayList<>();
+    private List<AgendaMedica> getAgendaMedicoSelecionadas() {
+        List<AgendaMedica> agendaMedicaSelecionadas = new ArrayList<>();
 
         for (int i = 0; i < mLvAgendaMedico.getCount(); i++) {
             if (mLvAgendaMedico.getChildAt(i) != null)
@@ -262,35 +302,35 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
                     CheckBox cBox = (CheckBox) mLvAgendaMedico.getChildAt(i).findViewById(R.id.chkBoxListaConsulta);
                     if (cBox.isChecked())
-                        agendaMedicoSelecionadas.add((AgendaMedico) mLvAgendaMedico.getItemAtPosition(i));
+                        agendaMedicaSelecionadas.add((AgendaMedica) mLvAgendaMedico.getItemAtPosition(i));
                 }
         }
-        return agendaMedicoSelecionadas;
+        return agendaMedicaSelecionadas;
     }
 
     /**
      *
-     * @param agendaMedicoSelecionada
+     * @param agendaMedicaSelecionada
      * @return
      *
      * Método que verifica se o usuário marcou outra consulta para a mesma especialidade, num período
      * inferior a 30 dias.
      */
-    private boolean criticarCarencia(AgendaMedico agendaMedicoSelecionada) {
+    private boolean criticarCarencia(AgendaMedica agendaMedicaSelecionada) {
         boolean criticado = false;
-        AgendaMedico agendaMedico = null;
-
-        List<ConsultaMarcada> consultasMarcadasPeloUsuario = mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
-
-        for (ConsultaMarcada consultaMarcadaAnterior : consultasMarcadasPeloUsuario) {
-            agendaMedico = mAgendaMedicoDAO.selecionarPorId(consultaMarcadaAnterior.getIdAgendaMedico());
-            if (agendaMedico != null)
-                if (agendaMedico.getMedico().getEspecialidade().getId() == agendaMedicoSelecionada.getMedico().getEspecialidade().getId())
-                    if (agendaMedicoSelecionada.getData().compareTo(agendaMedico.getData()) <= 30) {
-                        criticado = true;
-                        break;
-                    }
-        }
+        AgendaMedica agendaMedica = null;
+//
+//        List<ConsultaMarcada> consultasMarcadasPeloUsuario = mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+//
+//        for (ConsultaMarcada consultaMarcadaAnterior : consultasMarcadasPeloUsuario) {
+//            agendaMedica = mAgendaMedicoDAO.selecionarPorId(consultaMarcadaAnterior.getIdAgendaMedico());
+//            if (agendaMedica != null)
+//                if (agendaMedica.getMedico().getEspecialidade().getId() == agendaMedicaSelecionada.getMedico().getEspecialidade().getId())
+////                    if (agendaMedicaSelecionada.getData().compareTo(agendaMedica.getData()) <= 30) {
+////                        criticado = true;
+////                        break;
+//                    }
+//        }
         return criticado;
     }
 }

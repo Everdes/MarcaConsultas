@@ -17,20 +17,16 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import br.com.prova.adapters.AdapterListaConsulta;
-import br.com.prova.model.bean.AgendaMedico;
+import br.com.prova.model.bean.AgendaMedica;
 import br.com.prova.model.bean.ConsultaMarcada;
 import br.com.prova.model.bean.Usuario;
 import br.com.prova.model.dao.AgendaMedicoDAO;
 import br.com.prova.model.dao.ConsultaMarcadaDAO;
 import br.com.prova.task.TaskConsulta;
-import br.com.prova.task.TaskEspecialidade;
 import br.com.prova.util.Util;
 
 /**
@@ -47,7 +43,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
     private Usuario mUsuarioLogado;
     private ConsultaMarcadaDAO mConsultaMarcadaDAO;
     private FloatingActionButton mFabNovo;
-    private AgendaMedico mAgendaMedicoSelecionado;
+    private AgendaMedica mAgendaMedicaSelecionado;
     private ProgressDialog mProgresso;
 
     @Override
@@ -95,7 +91,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
                 /**
                  * Pega a AgendaMedico do item selecionado no ListView
                  */
-                mAgendaMedicoSelecionado = agendaMedicoDAO.selecionarPorId(mConsultaSelecionada.getIdAgendaMedico());
+                mAgendaMedicaSelecionado = agendaMedicoDAO.selecionarPorId(mConsultaSelecionada.getIdAgendaMedico());
 
                 return false;
             }
@@ -107,7 +103,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        atualizarLista();
+        listarConsultasMarcadas();
     }
 
     /**
@@ -119,11 +115,11 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
         if (mUsuarioLogado.getPerfil().equals("A"))
             consultarWS("http://192.168.0.6:8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcada"); //mConsultaMarcadaDAO.listarMarcadas();
         else
-            mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+            consultarWS("http://192.168.0.6:8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcadaPorUsuario/" + mUsuarioLogado.getId()); //mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
     }
 
     private void consultarWS(String url) {
-        new TaskConsulta(url){
+        new TaskConsulta(url) {
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
@@ -137,17 +133,13 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
 
                 if (retorno.toString().isEmpty())
                     Toast.makeText(ActivityListaConsultasMarcadas.this, retorno, Toast.LENGTH_LONG).show();
-                else{
-                    Type type = new TypeToken<List<ConsultaMarcada>>(){}.getType();
+                else {
+                    Type type = new TypeToken<List<ConsultaMarcada>>() {
+                    }.getType();
                     Gson gson = new Gson();
                     mConsultasMarcadas = gson.fromJson(retorno, type);
-                    Toast.makeText(ActivityListaConsultasMarcadas.this, " Retornou o valor: "
-                            + String.valueOf(mConsultasMarcadas.get(0).getId()), Toast.LENGTH_LONG).show();
 
-                    // TODO deve ser implementado para alimentar o ListView
-//                    if (mConsultasMarcadas != null) {
-//                        mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(ActivityListaConsultasMarcadas.this, mConsultasMarcadas));
-//                    }
+                    atualizarLista();
                 }
 
                 mProgresso.dismiss();
@@ -172,7 +164,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
                  * passando para ela o endereço da AgendaMedico, da Consulta selecionada.
                  */
                 Intent itAbrirMapa = new Intent(this, ActivityMostrarMapa.class);
-                itAbrirMapa.putExtra("endereco", mAgendaMedicoSelecionado.getLocalAtendimento().getEndereco());
+                itAbrirMapa.putExtra("endereco", mAgendaMedicaSelecionado.getLocalAtendimento().getEndereco());
                 startActivity(itAbrirMapa);
                 break;
             case R.id.menuDesmarcarConsulta:
@@ -199,9 +191,9 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
         if (criticarHoras()) {
             Util.showMessage("Aviso", "Não é possível desmarcar consultas com menos de 24 horas.", this);
             return;
-        }
-        else if (mConsultaSelecionada.getUsuario().getId() == mUsuarioLogado.getId())
+        } else if (mConsultaSelecionada.getUsuario().getId() == mUsuarioLogado.getId())
             if (mConsultaMarcadaDAO.cancelar(mConsultaSelecionada, Util.getToday())) {
+                // TODO Depois esse metodo abaixo deve ser substituido por listarConsultasMarcadas()
                 atualizarLista();
                 Util.enviarEmail(ActivityListaConsultasMarcadas.this, new String[]{mUsuarioLogado.getEmail()}, "Consulta desmarcada pelo usuario.");
             } else
@@ -213,40 +205,36 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
     /**
      * Método que verifica a quantidade de horas faltantes, para a realização da consulta,
      * caso a diferença seja de menos de 24 horas ele retorna True, caso contrário False.
+     *
      * @return
      */
     private boolean criticarHoras() {
         Date dataConsulta = null;
 
-        try {
-            dataConsulta = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(mAgendaMedicoSelecionado.getData() + " " + mAgendaMedicoSelecionado.getHora());
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-
-        long diferencaMiliSegundos = dataConsulta.getTime() - System.currentTimeMillis();
-        long diferencaHoras = (diferencaMiliSegundos / (60 * 60 * 1000));
-
-        if (diferencaHoras < 24)
-            return true;
-        else
-            return false;
+//        try {
+//            dataConsulta = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(mAgendaMedicaSelecionado.getData() + " " + mAgendaMedicaSelecionado.getHora());
+//        } catch (ParseException e) {
+//            e.printStackTrace();
+//        }
+//
+//        long diferencaMiliSegundos = dataConsulta.getTime() - System.currentTimeMillis();
+//        long diferencaHoras = (diferencaMiliSegundos / (60 * 60 * 1000));
+//
+//        if (diferencaHoras < 24)
+//            return true;
+//        else
+        return false;
     }
 
     /**
      * Método que atualiza o List View de Consultas Marcadas
      */
     public void atualizarLista() {
-//        mConsultasMarcadas =
-        listarConsultasMarcadas();
-
-
-
         /**
          * Seta um adaptador personalizado que "transforma" os dados da lista, em componentes de tela do List View
          */
-//        if (mConsultasMarcadas != null) {
-//            mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(this, mConsultasMarcadas));
-//        }
+        if (mConsultasMarcadas != null) {
+            mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(this, mConsultasMarcadas));
+        }
     }
 }

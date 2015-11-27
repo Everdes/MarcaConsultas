@@ -63,9 +63,9 @@ public class AdapterListaConsulta extends BaseAdapter {
 
             ((TextView) convertView.findViewById(R.id.txtNome)).setText(consultaMarcada.getUsuario().toString());
             ((TextView) convertView.findViewById(R.id.txtDataHora)).
-                    setText(Util.convertDateToStr(consultaMarcada.getAgendaMedico().getData()));
-            ((TextView) convertView.findViewById(R.id.txtMedico)).setText(consultaMarcada.getAgendaMedico().getMedico().getNome());
-            ((TextView) convertView.findViewById(R.id.txtLocal)).setText(consultaMarcada.getAgendaMedico().getLocalAtendimento().getNome());
+                    setText(Util.convertDateToStr(consultaMarcada.getAgendaMedica().getDataAgenda()));
+            ((TextView) convertView.findViewById(R.id.txtMedico)).setText(consultaMarcada.getAgendaMedica().getMedico().getNome());
+            ((TextView) convertView.findViewById(R.id.txtLocal)).setText(consultaMarcada.getAgendaMedica().getLocalAtendimento().getNome());
 
 //            TODO Consultando as DAO
 //            AgendaMedicoDAO agendaMedicoDAO = new AgendaMedicoDAO(mContexto);

@@ -12,7 +12,7 @@ public class ConsultaMarcada implements Serializable {
 
     private int id;
     private int idAgendaMedico;
-    private AgendaMedico agendaMedico;
+    private AgendaMedica agendaMedica;
     private Date dataMarcacaoConsulta;
     private Situacao situacao;
     private Date dataCancelamento;
@@ -34,12 +34,12 @@ public class ConsultaMarcada implements Serializable {
         this.idAgendaMedico = idAgendaMedico;
     }
 
-    public AgendaMedico getAgendaMedico() {
-        return agendaMedico;
+    public AgendaMedica getAgendaMedica() {
+        return agendaMedica;
     }
 
-    public void setAgendaMedico(AgendaMedico agendaMedico) {
-        this.agendaMedico = agendaMedico;
+    public void setAgendaMedica(AgendaMedica agendaMedica) {
+        this.agendaMedica = agendaMedica;
     }
 
     public Usuario getUsuario() {

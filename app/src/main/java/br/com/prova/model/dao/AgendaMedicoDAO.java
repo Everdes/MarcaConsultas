@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import br.com.prova.Enumerators.Situacao;
-import br.com.prova.model.bean.AgendaMedico;
+import br.com.prova.model.bean.AgendaMedica;
 import br.com.prova.model.bean.LocalAtendimento;
 import br.com.prova.model.bean.Medico;
 import br.com.prova.util.Util;
@@ -42,8 +42,8 @@ public class AgendaMedicoDAO {
      *
      * Método que seleciona uma AgendaMedico, através de um Id passado por parâmetro
      */
-    public AgendaMedico selecionarPorId(int id) {
-        AgendaMedico agendaMedico = null;
+    public AgendaMedica selecionarPorId(int id) {
+        AgendaMedica agendaMedica = null;
         Cursor cursor;
         String sql = "select * from " + mBanco.TB_AGENDA_MEDICO +
                 " where " + mBanco.ID_AGENDA_MEDICO + "=" + id;
@@ -53,11 +53,11 @@ public class AgendaMedicoDAO {
         cursor = db.rawQuery(sql, null);
 
         while (cursor.moveToNext())
-            agendaMedico = getAgendaMedico(cursor);
+            agendaMedica = getAgendaMedico(cursor);
 
         db.close();
 
-        return agendaMedico;
+        return agendaMedica;
     }
 
     /**
@@ -67,9 +67,9 @@ public class AgendaMedicoDAO {
      *
      * Método que retorna uma lista de AgendaMedico, através do valor da Situação, passado por parâmetro
      */
-    public List<AgendaMedico> listarPorSituacao(Situacao situacao) {
+    public List<AgendaMedica> listarPorSituacao(Situacao situacao) {
         Cursor cursor;
-        List<AgendaMedico> agendasMedico = new ArrayList<>();
+        List<AgendaMedica> agendasMedico = new ArrayList<>();
         String sql = "select * from " + mBanco.TB_AGENDA_MEDICO +
                 " where " + mBanco.SITUACAO_AGENDA_MEDICO + " = '" + situacao.getNome() + "'";
 
@@ -122,9 +122,9 @@ public class AgendaMedicoDAO {
      *
      * Método que retorna uma lista de AgendaMedico, de um determiando Local de Atendimento
      */
-    public List<AgendaMedico> listarPorLocalAtendimento(LocalAtendimento localAtendimento) {
+    public List<AgendaMedica> listarPorLocalAtendimento(LocalAtendimento localAtendimento) {
         Cursor cursor;
-        List<AgendaMedico> agendasMedico = new ArrayList<>();
+        List<AgendaMedica> agendasMedico = new ArrayList<>();
         String sql = "select * from " + mBanco.TB_AGENDA_MEDICO +
                 " where " + mBanco.SITUACAO_AGENDA_MEDICO + " = '" + Situacao.DISPONIVEL.getNome() +
                 "' and " + mBanco.LOCAL_ATENDIMENTO_AGENDA_MEDICO + " = " + localAtendimento.getId();
@@ -153,9 +153,9 @@ public class AgendaMedicoDAO {
      *
      * Método que retorna uma lista de AgendaMedico, de um determinado medico
      */
-    public List<AgendaMedico> listarPorMedico(Medico medico) {
+    public List<AgendaMedica> listarPorMedico(Medico medico) {
         Cursor cursor;
-        List<AgendaMedico> agendasMedico = new ArrayList<>();
+        List<AgendaMedica> agendasMedico = new ArrayList<>();
         String sql = "select * from " + mBanco.TB_AGENDA_MEDICO +
                 " where " + mBanco.SITUACAO_AGENDA_MEDICO + " = '" + Situacao.DISPONIVEL.getNome() +
                 "' and " + mBanco.MEDICO_AGENDA_MEDICO + " = " + medico.getId();
@@ -183,9 +183,9 @@ public class AgendaMedicoDAO {
      *
      * Método que retorna uma lista de AgendaMedico, através de uma data passada por parâmetro
      */
-    public List<AgendaMedico> listarPorData(java.util.Date data) {
+    public List<AgendaMedica> listarPorData(java.util.Date data) {
         Cursor cursor;
-        List<AgendaMedico> agendasMedico = new ArrayList<>();
+        List<AgendaMedica> agendasMedico = new ArrayList<>();
         String sql = "select * from " + mBanco.TB_AGENDA_MEDICO +
                 " where " + mBanco.SITUACAO_AGENDA_MEDICO + " = '" + Situacao.DISPONIVEL.getNome() +
                 "' and " + mBanco.DATA_AGENDA_MEDICO + " = '" + Util.convertDateToStrInvertido(data) + "'";
@@ -215,27 +215,27 @@ public class AgendaMedicoDAO {
      * um Bean de AgendaMedico.
      * Utilizado em todos os métodos de seleção e listagem desta classe
      */
-    private AgendaMedico getAgendaMedico(Cursor cursor) {
-        AgendaMedico agendaMedico = new AgendaMedico();
+    private AgendaMedica getAgendaMedico(Cursor cursor) {
+        AgendaMedica agendaMedica = new AgendaMedica();
 
-        agendaMedico.setId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.ID_AGENDA_MEDICO)));
-        agendaMedico.setMedico(mMedicoDAO.selecionarPorId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.MEDICO_AGENDA_MEDICO))));
-        agendaMedico.setData(Date.valueOf(cursor.getString(cursor.getColumnIndexOrThrow(mBanco.DATA_AGENDA_MEDICO))));
-        agendaMedico.setHora(cursor.getString(cursor.getColumnIndexOrThrow(mBanco.HORA_AGENDA_MEDICO)));
-        agendaMedico.setLocalAtendimento(mLocalAtendimentoDAO.selecionarPorId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.LOCAL_ATENDIMENTO_AGENDA_MEDICO))));
+        agendaMedica.setId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.ID_AGENDA_MEDICO)));
+        agendaMedica.setMedico(mMedicoDAO.selecionarPorId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.MEDICO_AGENDA_MEDICO))));
+//        agendaMedica.setData(Date.valueOf(cursor.getString(cursor.getColumnIndexOrThrow(mBanco.DATA_AGENDA_MEDICO))));
+//        agendaMedica.setHora(cursor.getString(cursor.getColumnIndexOrThrow(mBanco.HORA_AGENDA_MEDICO)));
+        agendaMedica.setLocalAtendimento(mLocalAtendimentoDAO.selecionarPorId(cursor.getInt(cursor.getColumnIndexOrThrow(mBanco.LOCAL_ATENDIMENTO_AGENDA_MEDICO))));
 
         switch (cursor.getString(cursor.getColumnIndexOrThrow(mBanco.SITUACAO_AGENDA_MEDICO))) {
             case "D":
-                agendaMedico.setSituacao(Situacao.DISPONIVEL);
+                agendaMedica.setSituacao(Situacao.DISPONIVEL);
                 break;
             case "M":
-                agendaMedico.setSituacao(Situacao.MARCADA);
+                agendaMedica.setSituacao(Situacao.MARCADA);
                 break;
             case "C":
-                agendaMedico.setSituacao(Situacao.CANCELADA);
+                agendaMedica.setSituacao(Situacao.CANCELADA);
                 break;
         }
 
-        return agendaMedico;
+        return agendaMedica;
     }
 }
