@@ -46,6 +46,8 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
     private AgendaMedica mAgendaMedicaSelecionado;
     private ProgressDialog mProgresso;
 
+    private String IP;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +57,7 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
          * Lê o usuario enviado pela ActivityLogin
          */
         mUsuarioLogado = (Usuario) getIntent().getSerializableExtra("usuarioLogado");
+        IP = getIntent().getStringExtra("IP");
 
         mConsultaMarcadaDAO = new ConsultaMarcadaDAO(this);
 
@@ -68,11 +71,10 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
                  */
                 Intent itMarcarConsulta = new Intent(ActivityListaConsultasMarcadas.this, ActivityMarcarConsultas.class);
                 itMarcarConsulta.putExtra("usuarioLogado", mUsuarioLogado);
+                itMarcarConsulta.putExtra("IP", IP);
                 startActivity(itMarcarConsulta);
             }
         });
-
-        //Criar Adapter personalizado
 
         mLvConsultasMarcadas = (ListView) findViewById(R.id.lvConsultasMarcadas);
         /**
@@ -112,10 +114,13 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
      * caso seja User, somente as suas consultas são retornadas.
      */
     private void listarConsultasMarcadas() {
+        if (IP.toString().isEmpty())
+            IP = "localhost";
+
         if (mUsuarioLogado.getPerfil().equals("A"))
-            consultarWS("http://192.168.0.6:8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcada"); //mConsultaMarcadaDAO.listarMarcadas();
+            consultarWS("http://" + IP + ":8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcada");
         else
-            consultarWS("http://192.168.0.6:8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcadaPorUsuario/" + mUsuarioLogado.getId()); //mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+            consultarWS("http://" + IP + ":8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcadaPorUsuario/" + mUsuarioLogado.getId());
     }
 
     private void consultarWS(String url) {

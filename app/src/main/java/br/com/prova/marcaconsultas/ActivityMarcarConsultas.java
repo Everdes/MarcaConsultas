@@ -66,6 +66,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
     private List<Especialidade> mEspecialidades;
     private RadioGroup mRadGrpFiltro;
     private ProgressDialog mProgresso;
+    private String IP;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +80,8 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
         mEspecialidadeDAO = new EspecialidadeDAO(this);
 
         mLvAgendaMedico = (ListView) findViewById(R.id.lvAgendaMedico);
+
+        IP = getIntent().getStringExtra("IP");
 
         mRadGrpFiltro = (RadioGroup) findViewById(R.id.radGrpFiltro);
         mRadGrpFiltro.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -255,7 +258,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
     private void listarAgendaMedico() {
 //        mListaAgendaMedica = mAgendaMedicoDAO.listarPorSituacao(Situacao.DISPONIVEL);
 
-        consultarWS("http://192.168.0.6:8090/WSAgendaMedica/agendaMedica/listarAgendaMedica");
+        consultarWS("http://" + IP + ":8090/WSAgendaMedica/agendaMedica/listarAgendaMedica");
     }
 
     private void consultarWS(String url) {
@@ -318,19 +321,19 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
      */
     private boolean criticarCarencia(AgendaMedica agendaMedicaSelecionada) {
         boolean criticado = false;
-        AgendaMedica agendaMedica = null;
-//
-//        List<ConsultaMarcada> consultasMarcadasPeloUsuario = mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
-//
-//        for (ConsultaMarcada consultaMarcadaAnterior : consultasMarcadasPeloUsuario) {
-//            agendaMedica = mAgendaMedicoDAO.selecionarPorId(consultaMarcadaAnterior.getIdAgendaMedico());
-//            if (agendaMedica != null)
-//                if (agendaMedica.getMedico().getEspecialidade().getId() == agendaMedicaSelecionada.getMedico().getEspecialidade().getId())
-////                    if (agendaMedicaSelecionada.getData().compareTo(agendaMedica.getData()) <= 30) {
-////                        criticado = true;
-////                        break;
-//                    }
-//        }
+        AgendaMedica agendaMedica;
+
+        List<ConsultaMarcada> consultasMarcadasPeloUsuario = mConsultaMarcadaDAO.listarMarcadasPorUsuario(mUsuarioLogado);
+
+        for (ConsultaMarcada consultaMarcadaAnterior : consultasMarcadasPeloUsuario) {
+            agendaMedica = mAgendaMedicoDAO.selecionarPorId(consultaMarcadaAnterior.getIdAgendaMedico());
+            if (agendaMedica != null)
+                if (agendaMedica.getMedico().getEspecialidade().getId() == agendaMedicaSelecionada.getMedico().getEspecialidade().getId())
+                    if (agendaMedicaSelecionada.getDataAgenda().compareTo(agendaMedica.getDataAgenda()) <= 30) {
+                        criticado = true;
+                        break;
+                    }
+        }
         return criticado;
     }
 }
