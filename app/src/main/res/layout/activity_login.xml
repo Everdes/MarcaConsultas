@@ -80,17 +80,6 @@
                 android:textColor="@android:color/black"
                 android:visibility="invisible" />
 
-            <EditText
-                android:id="@+id/edtIP"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="20dp"
-                android:layout_marginRight="20dp"
-                android:layout_marginTop="5dp"
-                android:ems="10"
-                android:inputType="text"
-                android:hint="IP fixo do WS" />
-
             <Button
                 android:id="@+id/btnEntrar"
                 android:layout_width="196dp"

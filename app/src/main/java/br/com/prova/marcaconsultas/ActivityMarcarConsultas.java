@@ -1,34 +1,35 @@
 package br.com.prova.marcaconsultas;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.GsonBuilder;
 
-import java.lang.reflect.Type;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import br.com.prova.Enumerators.Situacao;
-import br.com.prova.adapters.AdapterListaAgendaMedico;
+import br.com.prova.adapters.AdapterAgendaMedica;
+import br.com.prova.interfaces.AgendaMedicaAPI;
 import br.com.prova.model.bean.AgendaMedica;
 import br.com.prova.model.bean.ConsultaMarcada;
 import br.com.prova.model.bean.Especialidade;
@@ -40,33 +41,47 @@ import br.com.prova.model.dao.ConsultaMarcadaDAO;
 import br.com.prova.model.dao.EspecialidadeDAO;
 import br.com.prova.model.dao.LocalAtendimentoDAO;
 import br.com.prova.model.dao.MedicoDAO;
-import br.com.prova.task.TaskConsulta;
+import br.com.prova.util.Constantes;
+import br.com.prova.util.OnScrollListener;
 import br.com.prova.util.Util;
+import retrofit.Call;
+import retrofit.Callback;
+import retrofit.GsonConverterFactory;
+import retrofit.Response;
+import retrofit.Retrofit;
 
 /**
  * Created by Éverdes on 27/09/2015.
- *
+ * <p/>
  * Activity responsavel por exibir a Agenda dos médicos, e por controlar e permitir, a marcação de consultas.
  */
 public class ActivityMarcarConsultas extends AppCompatActivity {
 
-    private List<AgendaMedica> mListaAgendaMedica;
-    private ListView mLvAgendaMedico;
-    private AgendaMedicoDAO mAgendaMedicoDAO;
-    private FloatingActionButton mFabMarcarConsulta;
-    private ConsultaMarcadaDAO mConsultaMarcadaDAO;
     private Usuario mUsuarioLogado;
-    private LocalAtendimentoDAO mLocalAtendimentoDAO;
-    private MedicoDAO mMedicoDAO;
-    private EspecialidadeDAO mEspecialidadeDAO;
-    private Spinner mSpnFiltro;
-    private ArrayAdapter<String> mAdapterSpinner;
+
+    private List<AgendaMedica> mListaAgendaMedica;
     private List<LocalAtendimento> mLocalAtendimentosFiltro;
     private List<Medico> mMedicosFiltro;
+
     private List<Especialidade> mEspecialidades;
-    private RadioGroup mRadGrpFiltro;
+    private ConsultaMarcadaDAO mConsultaMarcadaDAO;
+    private AgendaMedicoDAO mAgendaMedicoDAO;
+    private EspecialidadeDAO mEspecialidadeDAO;
+    private LocalAtendimentoDAO mLocalAtendimentoDAO;
+    private MedicoDAO mMedicoDAO;
+
+    private RecyclerView mRvAgendaMedica;
     private ProgressDialog mProgresso;
-    private String IP;
+    private Spinner mSpnFiltro;
+    private ArrayAdapter<String> mAdapterSpinner;
+    private RadioGroup mRadGrpFiltro;
+
+    private Gson mGson = new GsonBuilder().create();
+    private Retrofit mRetrofit = new Retrofit
+            .Builder()
+            .baseUrl(Constantes.API_BASE)
+            .addConverterFactory(GsonConverterFactory.create(mGson))
+            .build();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,10 +93,6 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
         mLocalAtendimentoDAO = new LocalAtendimentoDAO(this);
         mMedicoDAO = new MedicoDAO(this);
         mEspecialidadeDAO = new EspecialidadeDAO(this);
-
-        mLvAgendaMedico = (ListView) findViewById(R.id.lvAgendaMedico);
-
-        IP = getIntent().getStringExtra("IP");
 
         mRadGrpFiltro = (RadioGroup) findViewById(R.id.radGrpFiltro);
         mRadGrpFiltro.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -150,14 +161,14 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
                         mMedicosFiltro = mMedicoDAO.listarPorEspecialidade(mEspecialidades.get(position));
 
                         mListaAgendaMedica.clear();
-                        for(Medico medico : mMedicosFiltro) {
+                        for (Medico medico : mMedicosFiltro) {
                             mListaAgendaMedica.addAll(mAgendaMedicoDAO.listarPorMedico(medico));
                         }
                         break;
                     case R.id.radBtnData:
                         Date date = null;
                         try {
-                            date = new SimpleDateFormat("dd/MM/yyyy").parse(mAdapterSpinner.getItem(position));
+                            date = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(mAdapterSpinner.getItem(position));
                         } catch (ParseException e) {
                             e.printStackTrace();
                         }
@@ -166,7 +177,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
                         break;
                 }
 
-                atualizarLista();
+                listarAgendaMedico();
             }
 
             @Override
@@ -175,8 +186,8 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
             }
         });
 
-        mFabMarcarConsulta = (FloatingActionButton) findViewById(R.id.fabMarcarConsulta);
-        mFabMarcarConsulta.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton fabMarcarConsulta = (FloatingActionButton) findViewById(R.id.fabMarcarConsulta);
+        fabMarcarConsulta.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 List<AgendaMedica> agendaMedicaSelecionadas = getAgendaMedicoSelecionadas();
@@ -189,7 +200,6 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
                     } else if (mConsultaMarcadaDAO.inserir(getConsultaMarcada(agendaMedicaSelecionadas.get(0)))) {
                         listarAgendaMedico();
-                        atualizarLista();
                         Util.enviarEmail(ActivityMarcarConsultas.this, new String[]{mUsuarioLogado.getEmail()}, "A sua consulta foi marcada com sucesso.");
                     } else
                         Util.showMessage("Aviso", "Não foi possível marcar consulta.", ActivityMarcarConsultas.this);
@@ -210,12 +220,29 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
         mUsuarioLogado = (Usuario) getIntent().getSerializableExtra("usuarioLogado");
 
+        LinearLayoutManager llManager = new LinearLayoutManager(this);
+
+        mRvAgendaMedica = (RecyclerView) findViewById(R.id.rvAgendaMedica);
+        mRvAgendaMedica.setHasFixedSize(true);
+        mRvAgendaMedica.setLayoutManager(llManager);
+        mRvAgendaMedica.addOnScrollListener(new OnScrollListener(llManager, fabMarcarConsulta) {
+            @Override
+            public void onScroll(RecyclerView recyclerView, int dx, int dy, boolean onScroll) {
+
+            }
+
+            @Override
+            public void onLoadMore(int currentPage) {
+
+            }
+        });
+
         listarAgendaMedico();
-        atualizarLista();
     }
 
     /**
      * Método que recebe uma lista e seta no Spinner, para que o usuário possa escolher um filtro.
+     *
      * @param listaSpinner
      */
     private void alimentarSpinner(List<String> listaSpinner) {
@@ -226,6 +253,7 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
 
     /**
      * Método que recebe uma Agenda Medico e retorna um BEAN de Consulta Marcada.
+     *
      * @param agendaMedica
      * @return
      */
@@ -244,11 +272,11 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
      * Método que atualiza o List View da AgendaMedico.
      */
     private void atualizarLista() {
-        if (mListaAgendaMedica != null) {
+        if (!mListaAgendaMedica.isEmpty()) {
             /**
              * Seta um adaptador personalizado que "transforma" os dados da lista, em componentes de tela do List View.
              */
-            mLvAgendaMedico.setAdapter(new AdapterListaAgendaMedico(this, mListaAgendaMedica));
+            mRvAgendaMedica.setAdapter(new AdapterAgendaMedica(this, mListaAgendaMedica));
         }
     }
 
@@ -258,64 +286,68 @@ public class ActivityMarcarConsultas extends AppCompatActivity {
     private void listarAgendaMedico() {
 //        mListaAgendaMedica = mAgendaMedicoDAO.listarPorSituacao(Situacao.DISPONIVEL);
 
-        consultarWS("http://" + IP + ":8090/WSAgendaMedica/agendaMedica/listarAgendaMedica");
-    }
+        AgendaMedicaAPI api = mRetrofit.create(AgendaMedicaAPI.class);
 
-    private void consultarWS(String url) {
-        new TaskConsulta(url) {
+        Call<List<AgendaMedica>> call = api.listarAgendaMedica();
+        call.enqueue(new Callback<List<AgendaMedica>>() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
+            public void onResponse(Response<List<AgendaMedica>> response, Retrofit retrofit) {
+                mListaAgendaMedica = response.body();
 
-                mProgresso = ProgressDialog.show(ActivityMarcarConsultas.this, "Aguarde...", "Consultando o servidor...", true, false);
+                atualizarLista();
             }
 
             @Override
-            protected void onPostExecute(String retorno) {
-                super.onPostExecute(retorno);
-
-                if (retorno.toString().isEmpty())
-                    Toast.makeText(ActivityMarcarConsultas.this, retorno, Toast.LENGTH_LONG).show();
-                else {
-                    Type type = new TypeToken<List<AgendaMedica>>() {
-                    }.getType();
-                    Gson gson = new Gson();
-                    mListaAgendaMedica = gson.fromJson(retorno, type);
-
-                    atualizarLista();
-                }
-
-                mProgresso.dismiss();
+            public void onFailure(Throwable t) {
+                Toast.makeText(ActivityMarcarConsultas.this, "Ocorreu um erro ao consultar a Agenda Médica.", Toast.LENGTH_LONG).show();
             }
-        }.execute();
+        });
+
+
+//        new TaskConsulta() {
+//            @Override
+//            protected void onPreExecute() {
+//                super.onPreExecute();
+//
+//                mProgresso = ProgressDialog.show(ActivityMarcarConsultas.this, "Aguarde...", "Consultando o servidor...", true, false);
+//            }
+//
+//            @Override
+//            protected void onPostExecute(String retorno) {
+//                super.onPostExecute(retorno);
+//
+//                if (retorno.toString().isEmpty())
+//                    Toast.makeText(ActivityMarcarConsultas.this, retorno, Toast.LENGTH_LONG).show();
+//                else {
+//                    Type type = new TypeToken<List<AgendaMedica>>() {
+//                    }.getType();
+//                    Gson gson = new Gson();
+//                    mListaAgendaMedica = gson.fromJson(retorno, type);
+//
+//                    atualizarLista();
+//                }
+//
+//                mProgresso.dismiss();
+//            }
+//        }.execute();
     }
 
-    /**
-     *
-     * @return
-     *
-     * Método que retorna os itens selecionados no ListView.
-     */
     private List<AgendaMedica> getAgendaMedicoSelecionadas() {
         List<AgendaMedica> agendaMedicaSelecionadas = new ArrayList<>();
 
-        for (int i = 0; i < mLvAgendaMedico.getCount(); i++) {
-            if (mLvAgendaMedico.getChildAt(i) != null)
-                if ((CheckBox) mLvAgendaMedico.getChildAt(i).findViewById(R.id.chkBoxListaConsulta) != null) {
-
-                    CheckBox cBox = (CheckBox) mLvAgendaMedico.getChildAt(i).findViewById(R.id.chkBoxListaConsulta);
-                    if (cBox.isChecked())
-                        agendaMedicaSelecionadas.add((AgendaMedica) mLvAgendaMedico.getItemAtPosition(i));
-                }
-        }
+//        for (int i = 0; i < mLvAgendaMedico.getCount(); i++) {
+//            if (mLvAgendaMedico.getChildAt(i) != null)
+//                if ((CheckBox) mLvAgendaMedico.getChildAt(i).findViewById(R.id.chkBoxListaConsulta) != null) {
+//
+//                    CheckBox cBox = (CheckBox) mLvAgendaMedico.getChildAt(i).findViewById(R.id.chkBoxListaConsulta);
+//                    if (cBox.isChecked())
+//                        agendaMedicaSelecionadas.add((AgendaMedica) mLvAgendaMedico.getItemAtPosition(i));
+//                }
+//        }
         return agendaMedicaSelecionadas;
     }
 
     /**
-     *
-     * @param agendaMedicaSelecionada
-     * @return
-     *
      * Método que verifica se o usuário marcou outra consulta para a mesma especialidade, num período
      * inferior a 30 dias.
      */

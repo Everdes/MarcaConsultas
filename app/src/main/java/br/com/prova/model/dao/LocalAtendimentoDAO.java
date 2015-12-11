@@ -57,7 +57,7 @@ public class LocalAtendimentoDAO {
      *
      * Método que retorna a lista de todas os Locais de Atendimento
      */
-    public List listar() {
+    public List<LocalAtendimento> listar() {
         Cursor cursor;
         List<LocalAtendimento> locaisAtendimento = new ArrayList<>();
 
@@ -69,7 +69,7 @@ public class LocalAtendimentoDAO {
                 locaisAtendimento.add(getLocalAtendimento(cursor));
             }
         } catch (Exception e) {
-            Log.e("LocalAtendimento.listar()", e.getMessage());
+            Log.e("listar()", e.getMessage());
         } finally {
             cursor.close();
             db.close();

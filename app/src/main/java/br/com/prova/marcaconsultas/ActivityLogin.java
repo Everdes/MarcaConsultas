@@ -1,25 +1,30 @@
 package br.com.prova.marcaconsultas;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import br.com.prova.helpers.ActivityLoginHelper;
+import br.com.prova.interfaces.UsuarioAPI;
 import br.com.prova.model.bean.Usuario;
-import br.com.prova.model.dao.UsuarioDAO;
-import br.com.prova.task.TaskConsulta;
+import br.com.prova.util.Constantes;
 import br.com.prova.util.Util;
+import retrofit.Call;
+import retrofit.Callback;
+import retrofit.GsonConverterFactory;
+import retrofit.Response;
+import retrofit.Retrofit;
 
 /**
  * Created by Éverdes on 27/09/2015.
- *
+ * <p/>
  * Activity responsável por lê os dados de login e senha digitados pelo usuário e realizar a validação dos mesmos,
  * permitindo o acesso e uso da aplicação caso os dados estejam corretos, ou barrando caso não estajam de acordo.
  */
@@ -28,8 +33,8 @@ public class ActivityLogin extends AppCompatActivity {
     private Button mBtnEntrar;
     private ActivityLoginHelper mHelper;
     private Usuario mUsuarioSelecionado;
-    private EditText mEdtIP;
     private Usuario mUsuarioInformado;
+    private ProgressDialog mProgresso;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,8 +42,6 @@ public class ActivityLogin extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         mHelper = new ActivityLoginHelper(this);
-
-        mEdtIP = (EditText) findViewById(R.id.edtIP);
 
         mBtnEntrar = (Button) findViewById(R.id.btnEntrar);
         mBtnEntrar.setOnClickListener(new View.OnClickListener() {
@@ -53,43 +56,53 @@ public class ActivityLogin extends AppCompatActivity {
     }
 
     private void consultarUsuario() {
-        // TODO Será implementado um método GET no WS, para trazer o usuario, caso esteja correto.
-//        UsuarioWS usuarioWS = new UsuarioWS(this);
-//        mUsuarioSelecionado = usuarioWS.selecionarPorLogin(usuarioInformado.getLogin().toLowerCase());
+        Gson gson = new GsonBuilder()
+                //.registerTypeAdapter(Usuario.class, new DeserializerUsuario())// new Gson().getAdapter(type.getClass()))
+                .create();
 
-        new TaskConsulta("http://" + mEdtIP.getText().toString() + ":8090/WSAgendaMedica/usuario/autenticarUsuario/" + mUsuarioInformado.getLogin()) {
+        Retrofit retrofit = new Retrofit
+                .Builder()
+                .baseUrl(Constantes.API_BASE)
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .build();
 
-            ProgressDialog iProgresso;
+        UsuarioAPI usuarioAPI = retrofit.create(UsuarioAPI.class);
 
+        startProgress();
+
+        Call<Usuario> call = usuarioAPI.getUsuario(mUsuarioInformado.getLogin());
+        call.enqueue(new Callback<Usuario>() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
+            public void onResponse(Response<Usuario> response, Retrofit retrofit) {
+                mUsuarioSelecionado = response.body();
 
-                iProgresso = ProgressDialog.show(ActivityLogin.this, "Aguarde...", "Verificando usuário informado.");
+                if (validarUsuario())
+                    invocarIntent();
+
+                finalizeProgress();
             }
 
             @Override
-            protected void onPostExecute(String retorno) {
-                super.onPostExecute(retorno);
+            public void onFailure(Throwable t) {
+                finalizeProgress();
 
-                if (retorno.isEmpty())
-                Util.showMessage("Atenção", "Usuário não encontrado", ActivityLogin.this);
-                else {
-                    mUsuarioSelecionado = new Gson().fromJson(retorno, Usuario.class);
-                    if (validarUsuario()) {
-                        invocarIntent();
-                    }
-                }
-
-                iProgresso.dismiss();
+                Toast.makeText(getApplicationContext(),
+                        "Ocorreu um erro ao consultar os dados, por favor tente novamente!", Toast.LENGTH_LONG).show();
             }
-        }.execute();
+        });
+    }
+
+    private void finalizeProgress() {
+        mProgresso.dismiss();
+    }
+
+    private void startProgress() {
+        mProgresso = ProgressDialog.show(this, "Aguarde...", "Consultando dados do usuário.", true, false);
     }
 
     private void invocarIntent() {
         Intent itLogar = new Intent(ActivityLogin.this, ActivityListaConsultasMarcadas.class);
-        itLogar.putExtra("usuarioLogado", (java.io.Serializable) mUsuarioSelecionado);
-        itLogar.putExtra("IP", mEdtIP.getText().toString());
+        itLogar.putExtra("usuarioLogado", mUsuarioSelecionado);
         startActivity(itLogar);
     }
 
@@ -101,23 +114,15 @@ public class ActivityLogin extends AppCompatActivity {
             camposValidos = false;
         }
 
-        if (mEdtIP.getText().toString().isEmpty()){
-            Util.showMessage("Acesso", "Obrigatório informar o IP do Web Service", this);
-            camposValidos = false;
-        }
-
         return camposValidos;
     }
 
     /**
-     *
-     * @return
-     *
-     * Método responsável por verificar se os dados informados pelo usuário são válidos,
+     * @return Método responsável por verificar se os dados informados pelo usuário são válidos,
      * caso não sejam uma mensagem é mostrada ao usuário.
      */
     private boolean validarUsuario() {
-        if (mUsuarioSelecionado == null) {
+        if (mUsuarioSelecionado.getLogin() == null) {
             Util.showMessage("Acesso", "Usuário não encontrado.", this);
             return false;
         } else if (!mUsuarioSelecionado.getSenha().equals(mUsuarioInformado.getSenha().toString())) {

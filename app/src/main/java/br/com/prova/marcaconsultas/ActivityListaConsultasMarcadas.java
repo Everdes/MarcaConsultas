@@ -1,33 +1,35 @@
 package br.com.prova.marcaconsultas;
 
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
-import android.view.ContextMenu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListView;
-import android.widget.Toast;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.GsonBuilder;
 
-import java.lang.reflect.Type;
 import java.util.Date;
 import java.util.List;
 
-import br.com.prova.adapters.AdapterListaConsulta;
-import br.com.prova.model.bean.AgendaMedica;
+import br.com.prova.adapters.AdapterConsultaMarcada;
+import br.com.prova.interfaces.ConsultaMarcadaAPI;
+import br.com.prova.interfaces.events.OnItemClickListener;
+import br.com.prova.interfaces.events.OnItemLongClickListener;
 import br.com.prova.model.bean.ConsultaMarcada;
 import br.com.prova.model.bean.Usuario;
-import br.com.prova.model.dao.AgendaMedicoDAO;
-import br.com.prova.model.dao.ConsultaMarcadaDAO;
-import br.com.prova.task.TaskConsulta;
+import br.com.prova.util.Constantes;
+import br.com.prova.util.OnScrollListener;
 import br.com.prova.util.Util;
+import retrofit.Call;
+import retrofit.Callback;
+import retrofit.GsonConverterFactory;
+import retrofit.Response;
+import retrofit.Retrofit;
 
 /**
  * Created by Éverdes on 27/09/2015.
@@ -38,15 +40,64 @@ import br.com.prova.util.Util;
 public class ActivityListaConsultasMarcadas extends AppCompatActivity {
 
     private List<ConsultaMarcada> mConsultasMarcadas;
-    private ListView mLvConsultasMarcadas;
-    private ConsultaMarcada mConsultaSelecionada;
-    private Usuario mUsuarioLogado;
-    private ConsultaMarcadaDAO mConsultaMarcadaDAO;
-    private FloatingActionButton mFabNovo;
-    private AgendaMedica mAgendaMedicaSelecionado;
-    private ProgressDialog mProgresso;
 
-    private String IP;
+    private SwipeRefreshLayout mSwipeContainer;
+    private RecyclerView mRecyclerView;
+
+    private AdapterConsultaMarcada mAdapter;
+    private ConsultaMarcada mConsultaSelecionada;
+
+    private Usuario mUsuarioLogado;
+
+    private Gson mGson = new GsonBuilder().create();
+
+    private Retrofit mRetrofit = new Retrofit
+            .Builder()
+            .baseUrl(Constantes.API_BASE)
+            .addConverterFactory(GsonConverterFactory.create(mGson))
+            .build();
+
+    private OnItemClickListener onItemClickListener = new OnItemClickListener() {
+        @Override
+        public void onItemClick(View v, int position) {
+            mConsultaSelecionada = mConsultasMarcadas.get(position);
+
+            showMap();
+        }
+    };
+    private OnItemLongClickListener onItemLongClickListener = new OnItemLongClickListener() {
+        @Override
+        public void onItemLongClick(View v, int position) {
+            mConsultaSelecionada = mConsultasMarcadas.get(position);
+
+            desmarcarConsulta(position);
+        }
+    };
+    private SwipeRefreshLayout.OnRefreshListener onRefreshListener = new SwipeRefreshLayout.OnRefreshListener() {
+        @Override
+        public void onRefresh() {
+            callProgress();
+        }
+    };
+
+    private void callProgress() {
+        mSwipeContainer.setRefreshing(true);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mSwipeContainer.setRefreshing(false);
+            }
+        }, 2000);
+
+
+    }
+
+    private void showMap() {
+        Intent itAbrirMapa = new Intent(this, ActivityMostrarMapa.class);
+        itAbrirMapa.putExtra("endereco", mConsultaSelecionada.getAgendaMedica().getLocalAtendimento().getEndereco());
+        startActivity(itAbrirMapa);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +108,8 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
          * Lê o usuario enviado pela ActivityLogin
          */
         mUsuarioLogado = (Usuario) getIntent().getSerializableExtra("usuarioLogado");
-        IP = getIntent().getStringExtra("IP");
 
-        mConsultaMarcadaDAO = new ConsultaMarcadaDAO(this);
-
-        mFabNovo = (FloatingActionButton) findViewById(R.id.fabNovo);
+        FloatingActionButton mFabNovo = (FloatingActionButton) findViewById(R.id.fabNovo);
         mFabNovo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -71,124 +119,86 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
                  */
                 Intent itMarcarConsulta = new Intent(ActivityListaConsultasMarcadas.this, ActivityMarcarConsultas.class);
                 itMarcarConsulta.putExtra("usuarioLogado", mUsuarioLogado);
-                itMarcarConsulta.putExtra("IP", IP);
                 startActivity(itMarcarConsulta);
             }
         });
 
-        mLvConsultasMarcadas = (ListView) findViewById(R.id.lvConsultasMarcadas);
-        /**
-         * registrando o ListView em um Menu de Contexto
-         */
-        registerForContextMenu(mLvConsultasMarcadas);
-        mLvConsultasMarcadas.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        LinearLayoutManager llManager = new LinearLayoutManager(getParent());
+
+        OnScrollListener endlessListener = new OnScrollListener(llManager) {
+
             @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                /**
-                 * Pega o item selecionado no ListView
-                 */
-                mConsultaSelecionada = mConsultasMarcadas.get(position);
+            public void onScroll(RecyclerView recyclerView, int dx, int dy, boolean onScroll) {
 
-                AgendaMedicoDAO agendaMedicoDAO = new AgendaMedicoDAO(getApplicationContext());
-                /**
-                 * Pega a AgendaMedico do item selecionado no ListView
-                 */
-                mAgendaMedicaSelecionado = agendaMedicoDAO.selecionarPorId(mConsultaSelecionada.getIdAgendaMedico());
-
-                return false;
             }
-        });
+
+            @Override
+            public void onLoadMore(int currentPage) {
+
+            }
+        };
+
+        mSwipeContainer = (SwipeRefreshLayout) findViewById(R.id.swipeContainer);
+        mSwipeContainer.setOnRefreshListener(onRefreshListener);
+        mSwipeContainer.setColorSchemeResources(R.color.red, R.color.orange, R.color.yellow, R.color.primary);
+
+        mRecyclerView = (RecyclerView) findViewById(R.id.recyclerView);
+        mRecyclerView.setHasFixedSize(true);
+        mRecyclerView.setLayoutManager(llManager);
+        mRecyclerView.addOnScrollListener(endlessListener);
+
+        registerForContextMenu(mRecyclerView);
+
+        listarConsultasMarcadas();
+//        AdapterAgendaMedica adapterAgendaMedica = new AdapterAgendaMedica(ActivityListaConsultasMarcadas.this, mConsultasMarcadas);
+//        mRecyclerView.setAdapter(adapterAgendaMedica);
+
+//        mBtnFloatAdd.setOnClickListener(onClickFloatAdd);
+
 
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        listarConsultasMarcadas();
+    private void createAdapter() {
+        mAdapter = new AdapterConsultaMarcada(this, mConsultasMarcadas);
+        mAdapter.setOnItemClickListener(onItemClickListener);
+        mAdapter.setOnItemLongClickListener(onItemLongClickListener);
     }
 
     /**
-     * @return Método que chama a lista de Consultas Marcadas.
+     * Método que chama a lista de Consultas Marcadas.
      * Caso o usuário logado seja Adm as Consultas de todos os usuários são retornadas,
      * caso seja User, somente as suas consultas são retornadas.
      */
     private void listarConsultasMarcadas() {
-        if (IP.toString().isEmpty())
-            IP = "localhost";
+        Call<List<ConsultaMarcada>> call;
+        ConsultaMarcadaAPI consultaMarcadaAPI = mRetrofit.create(ConsultaMarcadaAPI.class);
 
         if (mUsuarioLogado.getPerfil().equals("A"))
-            consultarWS("http://" + IP + ":8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcada");
+            call = consultaMarcadaAPI.getConsultaMarcada();
         else
-            consultarWS("http://" + IP + ":8090/WSAgendaMedica/consultaMarcada/listarConsultaMarcadaPorUsuario/" + mUsuarioLogado.getId());
-    }
+            call = consultaMarcadaAPI.getConsultaMarcadaPorUsuario(mUsuarioLogado.getId());
 
-    private void consultarWS(String url) {
-        new TaskConsulta(url) {
+        call.enqueue(new Callback<List<ConsultaMarcada>>() {
             @Override
-            protected void onPreExecute() {
-                super.onPreExecute();
+            public void onResponse(Response<List<ConsultaMarcada>> response, Retrofit retrofit) {
+                mConsultasMarcadas = response.body();
 
-                mProgresso = ProgressDialog.show(ActivityListaConsultasMarcadas.this, "Aguarde...", "Consultando o servidor...", true, false);
+                atualizarLista();
             }
 
             @Override
-            protected void onPostExecute(String retorno) {
-                super.onPostExecute(retorno);
-
-                if (retorno.toString().isEmpty())
-                    Toast.makeText(ActivityListaConsultasMarcadas.this, retorno, Toast.LENGTH_LONG).show();
-                else {
-                    Type type = new TypeToken<List<ConsultaMarcada>>() {
-                    }.getType();
-                    Gson gson = new Gson();
-                    mConsultasMarcadas = gson.fromJson(retorno, type);
-
-                    atualizarLista();
-                }
-
-                mProgresso.dismiss();
+            public void onFailure(Throwable t) {
+                Util.showMessage("Erro",
+                        "Ocorreu um erro ao consultar os dados, por favor tente novamente.",
+                        getApplicationContext());
             }
-        }.execute();
-    }
-
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_contexto_marcar_consulta, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menuMostrarNoMapa:
-                /**
-                 * Caso o usuário selecione a opção Mostrar no Mapa, a Activity Mostar Mapa é invocada,
-                 * passando para ela o endereço da AgendaMedico, da Consulta selecionada.
-                 */
-                Intent itAbrirMapa = new Intent(this, ActivityMostrarMapa.class);
-                itAbrirMapa.putExtra("endereco", mAgendaMedicaSelecionado.getLocalAtendimento().getEndereco());
-                startActivity(itAbrirMapa);
-                break;
-            case R.id.menuDesmarcarConsulta:
-                /**
-                 * Caso o usuário selecione a opção Desmarcar Consulta, o método que desmarca a consulta é invocado.
-                 */
-                desmarcarConsulta();
-                break;
-            default:
-                break;
-        }
-
-        return super.onContextItemSelected(item);
+        });
     }
 
     /**
      * Método responsável por desmarcar a consulta selecionada pelo usuário.
      */
-    private void desmarcarConsulta() {
+    private void desmarcarConsulta(int position) {
         /**
          * Verifica se o usuario logado é o mesmo que marcou a consulta, e caso seja a consulta é cancelada,
          * caso contrário um alerta é mostrado para o usuário.
@@ -196,22 +206,21 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
         if (criticarHoras()) {
             Util.showMessage("Aviso", "Não é possível desmarcar consultas com menos de 24 horas.", this);
             return;
-        } else if (mConsultaSelecionada.getUsuario().getId() == mUsuarioLogado.getId())
-            if (mConsultaMarcadaDAO.cancelar(mConsultaSelecionada, Util.getToday())) {
-                // TODO Depois esse metodo abaixo deve ser substituido por listarConsultasMarcadas()
-                atualizarLista();
-                Util.enviarEmail(ActivityListaConsultasMarcadas.this, new String[]{mUsuarioLogado.getEmail()}, "Consulta desmarcada pelo usuario.");
-            } else
-                Util.showMessage("Aviso", "Não foi possível desmarcar esta consulta.", this);
-        else
+        } else if (mConsultaSelecionada.getUsuario().getId() == mUsuarioLogado.getId()) {
+            mAdapter.remove(position);
+            Util.enviarEmail(ActivityListaConsultasMarcadas.this, new String[]{mUsuarioLogado.getEmail()}, "Consulta desmarcada pelo usuario.");
+//            if (mConsultaMarcadaDAO.cancelar(mConsultaSelecionada, Util.getToday())) {
+//                atualizarLista();
+//                Util.enviarEmail(ActivityListaConsultasMarcadas.this, new String[]{mUsuarioLogado.getEmail()}, "Consulta desmarcada pelo usuario.");
+//            } else
+//                Util.showMessage("Aviso", "Não foi possível desmarcar esta consulta.", this);
+        } else
             Util.showMessage("Aviso", "Não é possível desmarcar consultas de outros usuários", this);
     }
 
     /**
      * Método que verifica a quantidade de horas faltantes, para a realização da consulta,
      * caso a diferença seja de menos de 24 horas ele retorna True, caso contrário False.
-     *
-     * @return
      */
     private boolean criticarHoras() {
         Date dataConsulta = null;
@@ -238,8 +247,10 @@ public class ActivityListaConsultasMarcadas extends AppCompatActivity {
         /**
          * Seta um adaptador personalizado que "transforma" os dados da lista, em componentes de tela do List View
          */
-        if (mConsultasMarcadas != null) {
-            mLvConsultasMarcadas.setAdapter(new AdapterListaConsulta(this, mConsultasMarcadas));
+        createAdapter();
+
+        if (!mConsultasMarcadas.isEmpty()) {
+            mRecyclerView.setAdapter(mAdapter);
         }
     }
 }
