@@ -5,6 +5,6 @@ package br.com.prova.util;
  */
 public class Constantes {
     // API
-    public static String API_BASE = "http://192.168.0.5:8086/WSAgendaMedica/";
+    public static String API_BASE = "http://192.168.0.6:8086/WSAgendaMedica/";
 
 }
